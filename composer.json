@@ -1,0 +1,19 @@
+{
+    "name": "wildphp/module-ircconnection",
+    "description": "IRC connection provider for WildPHP",
+    "license": "GPL-3.0",
+    "authors": [
+        {
+            "name": "Yoshi2889",
+            "email": "rick.2889@gmail.com"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "WildPHP\\Modules\\LinkSniffer\\": "src"
+        }
+    },
+    "minimum-stability": "alpha",
+    "prefer-stable": true
+}
