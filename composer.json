@@ -1,6 +1,6 @@
 {
-    "name": "wildphp/module-ircconnection",
-    "description": "IRC connection provider for WildPHP",
+    "name": "wildphp/module-linksniffer",
+    "description": "Shows information about a link when it is posted in a channel",
     "license": "GPL-3.0",
     "authors": [
         {
