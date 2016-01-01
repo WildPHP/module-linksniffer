@@ -67,7 +67,7 @@ class LinkSniffer extends BaseModule
 			$title = '(not a web page, content type: ' . $content_type . ')';
 
 			if ($content_type == 'text/html');
-				$title = '(Page <title> not found. Put that in your pipe and smoke it.');
+				$title = '(Page <title> not found. Put that in your pipe and smoke it.)');
 
 			if (in_array($content_type, ['text/html']))
 			{
