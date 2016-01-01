@@ -65,6 +65,10 @@ class LinkSniffer extends BaseModule
 			$content_type = strtolower(explode(';', $headerResource->getHeaderLine('Content-Type'))[0]);
 
 			$title = '(not a web page, content type: ' . $content_type . ')';
+
+			if ($content_type == 'text/html');
+				$title = '(Page <title> not found. Put that in your pipe and smoke it.');
+
 			if (in_array($content_type, ['text/html']))
 			{
 				$temp = $this->getTitleFromUri($link);
