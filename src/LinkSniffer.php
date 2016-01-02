@@ -20,7 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace WildPHP\Modules\LinkSniffer;
 
-use WildPHP\API\Remote;
 use WildPHP\API\ShortenUri;
 use WildPHP\BaseModule;
 use WildPHP\CoreModules\Connection\IrcDataObject;
@@ -28,10 +27,16 @@ use WildPHP\Exceptions\ShortUriCreationFailedException;
 
 class LinkSniffer extends BaseModule
 {
+	/**
+	 * @var UriCache
+	 */
+	protected $uriCache = null;
 
 	public function setup()
 	{
 		$this->getEventEmitter()->on('irc.data.in.privmsg', [$this, 'sniffLinks']);
+		$this->uriCache = new UriCache();
+		$this->uriCache->setupPruneTimer($this->getLoop());
 	}
 
 	/**
@@ -43,82 +48,73 @@ class LinkSniffer extends BaseModule
 		$string = $message->getParams()['text'];
 		$target = $message->getTargets()[0];
 
-		// Break the message up in pieces so we can analyse each.
-		$pieces = explode(' ', $string);
-
-		foreach ($pieces as $piece)
-		{
-			if (Remote::isValidLink($piece))
-				$link = $piece;
-		}
-
-		if (empty($link))
-			return;
-
 		try
 		{
-			$headerResource = Remote::getUriHeaders($link);
+			$uri = SnifferHelper::extractUriFromString($string);
+		}
+		catch (NoUriFoundException $e)
+		{
+			return;
+		}
 
-			if (!$headerResource->hasHeader('Content-Type'))
-				return;
+		$cacheItem = $this->uriCache->getCacheItem($uri);
 
-			$content_type = strtolower(explode(';', $headerResource->getHeaderLine('Content-Type'))[0]);
-
-			$title = '(not a web page, content type: ' . $content_type . ')';
-
-			if ($content_type == 'text/html')
-				$title = '(Page <title> not found. Put that in your pipe and smoke it.)';
-
-			if (in_array($content_type, ['text/html']))
-			{
-				$temp = $this->getTitleFromUri($link);
-
-				if (!empty($temp))
-					$title = $temp;
-			}
-
+		if (!$cacheItem)
+		{
 			try
 			{
-				$shortUri = ShortenUri::createShortLink($link);
+				$content_type = SnifferHelper::getContentTypeFromUri($uri);
+
+				$shortUri = $this->createShortUri($uri);
+
+				$title = '(not a web page, content type: ' . $content_type . ')';
+
+				if ($content_type == 'text/html')
+					$title = SnifferHelper::getTitleFromUri($uri);
 			}
-			catch (ShortUriCreationFailedException $e)
+
+			catch (PageTitleDoesNotExistException $e)
 			{
-				$shortUri = 'No short url';
+				$title = '(Page title not found or empty. Put that in your pipe and smoke it.)';
 			}
 
-			$connection = $this->getModule('Connection');
-			$connection->write($connection->getGenerator()
-				->ircPrivmsg($target, '[' . $shortUri . '] ' . $title));
+			catch (ContentTypeNotFoundException $e)
+			{
+				return;
+			}
+
+			$this->uriCache->addCacheItem($uri, $title, $shortUri);
+		}
+		else
+		{
+			$title = $cacheItem->getTitle();
+			$shortUri = $cacheItem->getShortUri();
 		}
 
-		// Catch every exception that may arise, because we don't want link sniffing to bring down the bot.
-		catch (\Exception $e)
-		{
-		}
+		if (empty($shortUri) || empty($title))
+			return;
+
+		$connection = $this->getModule('Connection');
+		$connection->write($connection->getGenerator()
+			->ircPrivmsg($target, '[' . $shortUri . '] ' . $title));
 	}
 
+
 	/**
-	 * @param string $link
+	 * @param string $uri
 	 * @return string
 	 */
-	public function getTitleFromUri($link)
+	public function createShortUri($uri)
 	{
-		$contents = '';
-		$title = '';
-		Remote::getUriBodySplit($link, function ($partial) use (&$title, &$contents)
+		try
 		{
-			$contents .= $partial;
+			$shortUri = ShortenUri::createShortLink($uri);
+		}
+		catch (ShortUriCreationFailedException $e)
+		{
+			$shortUri = 'No short url';
+		}
 
-			if (preg_match('/\<title\>(.*)\<\/title\>/is', $contents, $matches) && !empty($matches[1]))
-			{
-				$title = htmlspecialchars_decode(trim($matches[1]), ENT_QUOTES);
-
-				return false;
-			}
-
-			return true;
-		});
-
-		return $title;
+		return $shortUri;
 	}
 }

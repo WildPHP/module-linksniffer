@@ -8,7 +8,9 @@
             "email": "rick.2889@gmail.com"
         }
     ],
-    "require": {},
+    "require": {
+        "wildphp/wild-irc-bot": "^2.0"
+    },
     "autoload": {
         "psr-4": {
             "WildPHP\\Modules\\LinkSniffer\\": "src"
