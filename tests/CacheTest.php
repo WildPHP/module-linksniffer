@@ -31,13 +31,13 @@ class CacheTest extends \PHPUnit_Framework_TestCase
 		$uriCache = new UriCache();
 
 		$uriCache->addCacheItem('googleUri', 'Google');
+
 		$checkObject = new CacheItem();
 		$checkObject->setTitle('Google');
-		$checkObject->setExpireTime(time() + 60 * 60);
 
 		$retrieved = $uriCache->getCacheItem('googleUri');
 
-		$this->assertEquals($checkObject, $retrieved);
+		$this->assertSame($checkObject, $retrieved);
 	}
 
 	public function testRemoveItem()

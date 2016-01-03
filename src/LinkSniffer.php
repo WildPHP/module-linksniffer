@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace WildPHP\Modules\LinkSniffer;
 
-use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Exception\GuzzleException;
 use WildPHP\API\ShortenUri;
 use WildPHP\BaseModule;
 use WildPHP\CoreModules\Connection\IrcDataObject;
@@ -64,10 +64,8 @@ class LinkSniffer extends BaseModule
 		{
 			try
 			{
-				$content_type = SnifferHelper::getContentTypeFromUri($uri);
-
 				$shortUri = $this->createShortUri($uri);
-
+				$content_type = SnifferHelper::getContentTypeFromUri($uri);
 				$title = '(not a web page, content type: ' . $content_type . ')';
 
 				if ($content_type == 'text/html')
@@ -84,10 +82,10 @@ class LinkSniffer extends BaseModule
 				return;
 			}
 
-			// ClientExceptions can be thrown by Guzzle. If one occurs, just give up.
-			catch (ClientException $e)
+			// Guzzle exceptions (such as connection timeouts) should be ignored.
+			catch (GuzzleException $e)
 			{
-				return;
+				$title = '(link was unresponsive: ' . $uri . ')';
 			}
 
 			if (!empty($title) && !empty($shortUri))
