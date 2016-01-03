@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace WildPHP\Modules\LinkSniffer;
 
+use GuzzleHttp\Exception\ClientException;
 use WildPHP\API\ShortenUri;
 use WildPHP\BaseModule;
 use WildPHP\CoreModules\Connection\IrcDataObject;
@@ -83,7 +84,14 @@ class LinkSniffer extends BaseModule
 				return;
 			}
 
-			$this->uriCache->addCacheItem($uri, $title, $shortUri);
+			// ClientExceptions can be thrown by Guzzle. If one occurs, just give up.
+			catch (ClientException $e)
+			{
+				return;
+			}
+
+			if (!empty($title) && !empty($shortUri))
+				$this->uriCache->addCacheItem($uri, $title, $shortUri);
 		}
 		else
 		{
