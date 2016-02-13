@@ -65,9 +65,15 @@ class LinkSniffer extends BaseModule
 			try
 			{
 				$shortUri = $this->createShortUri($uri);
-				$content_type = SnifferHelper::getContentTypeFromUri($uri);
-				$title = '(not a web page, content type: ' . $content_type . ')';
 
+				# We prefer is.gd for content type queries. This significantly reduces errors.
+				$contentTypeUri = $shortUri;
+				if ($contentTypeUri == 'No short url')
+					$contentTypeUri = $uri;
+
+				$content_type = SnifferHelper::getContentTypeFromUri($contentTypeUri);
+
+				$title = '(not a web page, content type: ' . $content_type . ')';
 				if ($content_type == 'text/html')
 					$title = SnifferHelper::getTitleFromUri($uri);
 			}
