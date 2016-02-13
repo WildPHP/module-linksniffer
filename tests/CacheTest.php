@@ -54,4 +54,36 @@ class CacheTest extends \PHPUnit_Framework_TestCase
 
 		$this->assertEquals(0, $count);
 	}
+
+	public function testExpireEntry()
+	{
+		$uriCache = new UriCache();
+
+		$cacheItem = $uriCache->addCacheItem('someUriDest', 'someUri');
+
+		// Set the expiry time to the past.
+		$cacheItem->setExpireTime(time() - 1);
+
+		// getCacheItem will return false if the item has expired.
+		$returnedCacheItem = $uriCache->getCacheItem('someUriDest');
+
+		$this->assertEquals(false, $returnedCacheItem);
+	}
+
+	public function testPruneEntries()
+	{
+		$uriCache = new UriCache();
+
+		$cacheItem = $uriCache->addCacheItem('someUriDest', 'someUri');
+
+		// Set the expiry time to the past.
+		$cacheItem->setExpireTime(time() - 1);
+
+		$uriCache->pruneOldItems();
+
+		// Now we should have 0 items.
+		$itemCount = $uriCache->getItemCount();
+
+		$this->assertEquals(0, $itemCount);
+	}
 }
