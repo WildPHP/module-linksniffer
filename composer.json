@@ -9,7 +9,8 @@
         }
     ],
     "require": {
-        "wildphp/wild-irc-bot": "^2.0"
+        "wildphp/wild-irc-bot": "^2.0",
+        "wildphp/api": "^1.0"
     },
     "autoload": {
         "psr-4": {
