@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 namespace WildPHP\Modules\LinkSniffer;
 
 use WildPHP\API\Remote;
+use WildPHP\API\Validation;
 
 class SnifferHelper
 {
@@ -40,7 +41,7 @@ class SnifferHelper
 
 		$possibleUri = $matches[0];
 
-		if (!Remote::isValidLink($possibleUri))
+		if (!Validation::isValidLink($possibleUri))
 			throw new NoUriFoundException();
 
 		return $possibleUri;
