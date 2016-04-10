@@ -91,7 +91,6 @@ class LinkSniffer extends BaseModule
 			// Guzzle exceptions (such as connection timeouts) should be ignored.
 			catch (GuzzleException $e)
 			{
-				echo 'Caught exception: ' . $e->getMessage() . PHP_EOL;
 				$title = '(link was unresponsive: ' . $uri . ')';
 			}
 
