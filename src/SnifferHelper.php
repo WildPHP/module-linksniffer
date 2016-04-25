@@ -61,7 +61,10 @@ class SnifferHelper
 
 			if (preg_match('/<title(?:[^>]+)?>(.*)<\\/title>/is', $contents, $matches) && !empty($matches[1]))
 			{
-				$title = htmlspecialchars_decode(trim($matches[1]), ENT_QUOTES);
+				$title = trim($matches[1]);
+				$title = html_entity_decode($title, ENT_QUOTES | ENT_HTML401);
+				
+				// Abort the operation.
 				return false;
 			}
 
