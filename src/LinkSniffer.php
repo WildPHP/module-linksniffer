@@ -24,7 +24,7 @@ use GuzzleHttp\Exception\GuzzleException;
 use WildPHP\API\ShortenUri;
 use WildPHP\BaseModule;
 use WildPHP\CoreModules\Connection\IrcDataObject;
-use WildPHP\Exceptions\ShortUriCreationFailedException;
+use WildPHP\API\Exceptions\ShortUriCreationFailedException;
 
 class LinkSniffer extends BaseModule
 {
