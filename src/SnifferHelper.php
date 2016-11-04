@@ -33,6 +33,8 @@ class SnifferHelper
 	{
 		if (empty($string))
 			throw new NoUriFoundException();
+		elseif (strpos($string, '!nosniff') !== false)
+			throw new NoUriFoundException();
 
 		$hasMatches = preg_match('/https?\:\/\/[A-Za-z0-9\-\/._~:?#@!$&\'()*+,;=%]+/i', $string, $matches);
 
@@ -63,7 +65,7 @@ class SnifferHelper
 			{
 				$title = trim($matches[1]);
 				$title = html_entity_decode($title, ENT_QUOTES | ENT_HTML401);
-				
+
 				// Abort the operation.
 				return false;
 			}

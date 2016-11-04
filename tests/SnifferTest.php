@@ -34,6 +34,14 @@ class SnifferTest extends \PHPUnit_Framework_TestCase
 		$this->assertSame($expected, $result);
 	}
 
+	/**
+	 * @expectedException WildPHP\Modules\LinkSniffer\NoUriFoundException
+	 */
+	public function testIgnoresLinkIfNosniffKeywordIsPresent()
+	{
+	    SnifferHelper::extractUriFromString('http://google.com !nosniff');
+	}
+	
 	public function testGetTitle()
 	{
 		$expected = 'Google';
@@ -51,4 +59,6 @@ class SnifferTest extends \PHPUnit_Framework_TestCase
 
 		$this->assertSame($expected, $result);
 	}
+
+
 }
