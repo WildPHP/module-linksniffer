@@ -9,8 +9,8 @@
         }
     ],
     "require": {
-        "wildphp/wild-irc-bot": "^2.0",
-        "wildphp/api": "^1.0"
+        "guzzlehttp/guzzle": "^6.2",
+        "fabpot/goutte": "^v3.2"
     },
     "autoload": {
         "psr-4": {
