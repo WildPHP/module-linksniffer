@@ -44,28 +44,38 @@ class LinkSniffer
 
 	public function __construct(ComponentContainer $container)
 	{
-		EventEmitter::fromContainer($container)->on('irc.line.in.privmsg', [$this, 'sniffLinks']);
+		EventEmitter::fromContainer($container)
+			->on('irc.line.in.privmsg', [$this, 'sniffLinks']);
 
 		$commandHelp = new CommandHelp();
 		$commandHelp->addPage('Shortens a given link.');
 		$commandHelp->addPage('Usage: shorten [URL]');
-		CommandHandler::fromContainer($container)->registerCommand('shorten', [$this, 'shortenCommand'], $commandHelp, 1, 1);
+		CommandHandler::fromContainer($container)
+			->registerCommand('shorten', [$this, 'shortenCommand'], $commandHelp, 1, 1);
 
 		$commandHelp = new CommandHelp();
 		$commandHelp->addPage('Shortens the last recognized link given in the channel.');
-		CommandHandler::fromContainer($container)->registerCommand('shortenlast', [$this, 'shortenlastCommand'], $commandHelp, 0, 0);
+		CommandHandler::fromContainer($container)
+			->registerCommand('shortenlast', [$this, 'shortenlastCommand'], $commandHelp, 0, 0);
 
 		$this->setContainer($container);
 	}
 
-	public function shortenlastCommand(Channel $source, User $user, $args, ComponentContainer $container)
+	/**
+	 * @param Channel $source
+	 * @param User $user
+	 * @param array $args
+	 * @param ComponentContainer $container
+	 */
+	public function shortenlastCommand(Channel $source, User $user, array $args, ComponentContainer $container)
 	{
 		$channel = $source->getName();
 		$lastLink = $this->lastLinks[$channel] ?? '';
 
 		if (empty($lastLink))
 		{
-			Queue::fromContainer($container)->privmsg($source->getName(), $user->getNickname() . ', I do not have a stored link for this channel.');
+			Queue::fromContainer($container)
+				->privmsg($source->getName(), $user->getNickname() . ', I do not have a stored link for this channel.');
 
 			return;
 		}
@@ -74,21 +84,31 @@ class LinkSniffer
 
 		if (!$shortenedLink)
 		{
-			Queue::fromContainer($container)->privmsg($source->getName(), $user->getNickname() . ', I was unable to create a shortened link for this URL: ' . $lastLink);
+			Queue::fromContainer($container)
+				->privmsg($source->getName(), $user->getNickname() . ', I was unable to create a shortened link for this URL: ' . $lastLink);
 		}
 		else
-			Queue::fromContainer($container)->privmsg($source->getName(), $user->getNickname() . ', shortened URL: ' . $shortenedLink . ' (shortened from ' . $lastLink . ')');
+			Queue::fromContainer($container)
+				->privmsg($source->getName(), $user->getNickname() . ', shortened URL: ' . $shortenedLink . ' (shortened from ' . $lastLink . ')');
 	}
 
-	public function shortenCommand(Channel $source, User $user, $args, ComponentContainer $container)
+	/**
+	 * @param Channel $source
+	 * @param User $user
+	 * @param array $args
+	 * @param ComponentContainer $container
+	 */
+	public function shortenCommand(Channel $source, User $user, array $args, ComponentContainer $container)
 	{
 		$uri = $args[0];
 		$shortenedUri = self::getShortenedLink($uri);
 
 		if ($shortenedUri)
-			Queue::fromContainer($container)->privmsg($source->getName(), $user->getNickname() . ', here is your shortened link: ' . $shortenedUri);
+			Queue::fromContainer($container)
+				->privmsg($source->getName(), $user->getNickname() . ', here is your shortened link: ' . $shortenedUri);
 		else
-			Queue::fromContainer($container)->privmsg($source->getName(), $user->getNickname() . ', I was unable to create a shortened link for this URL.');
+			Queue::fromContainer($container)
+				->privmsg($source->getName(), $user->getNickname() . ', I was unable to create a shortened link for this URL.');
 	}
 
 	/**
@@ -101,12 +121,16 @@ class LinkSniffer
 
 		try
 		{
-			$blockedChannels = Configuration::fromContainer($this->getContainer())->get('disablelinksniffer')->getValue();
+			$blockedChannels = Configuration::fromContainer($this->getContainer())
+				->get('disablelinksniffer')
+				->getValue();
 
-			if (is_array($blockedChannels) &&  in_array($channel, $blockedChannels))
+			if (is_array($blockedChannels) && in_array($channel, $blockedChannels))
 				return;
 		}
-		catch (ConfigurationItemNotFoundException $e) {}
+		catch (ConfigurationItemNotFoundException $e)
+		{
+		}
 
 		$message = $incomingIrcMessage->getMessage();
 
@@ -138,7 +162,8 @@ class LinkSniffer
 			if ($contentType == 'text/html')
 			{
 				$crawler = $goutteClient->request('GET', $uri);
-				$title = $crawler->filterXPath('//title')->text();
+				$title = $crawler->filterXPath('//title')
+					->text();
 			}
 			else
 				$title = 'Content type: ' . $contentType;
@@ -157,15 +182,17 @@ class LinkSniffer
 		}
 		catch (\InvalidArgumentException | RequestException $e)
 		{
-			Logger::fromContainer($this->getContainer())->warning('Exception encountered', [
-				'message' => $e->getMessage()
-			]);
+			Logger::fromContainer($this->getContainer())
+				->warning('Exception encountered', [
+					'message' => $e->getMessage()
+				]);
 		}
 	}
 
 	/**
 	 * @param string $uri
 	 * @param Client|null $client
+	 *
 	 * @return bool|string
 	 */
 	public static function getShortenedLink(string $uri, Client $client = null)
@@ -195,6 +222,11 @@ class LinkSniffer
 		}
 	}
 
+	/**
+	 * @param $string
+	 *
+	 * @return false|string
+	 */
 	public static function extractUriFromString($string)
 	{
 		if (empty($string))
