@@ -38,4 +38,4 @@ Use the `shortenlast` command to shorten the stored link.
 Use `shorten [url]` to shorten any given link.
 
 ## License
-This module is licensed under the GNU General Public License, version 3. Please see `LICENSE` to read it.
+This module is licensed under the MIT license. Please see `LICENSE` to read it.
