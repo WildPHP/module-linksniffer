@@ -12,13 +12,11 @@ namespace WildPHP\Modules\LinkSniffer;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use WildPHP\Core\Channels\Channel;
-
 use WildPHP\Core\Commands\CommandHandler;
 use WildPHP\Core\Commands\CommandHelp;
 use WildPHP\Core\ComponentContainer;
 use WildPHP\Core\Configuration\Configuration;
 use WildPHP\Core\Configuration\ConfigurationItemNotFoundException;
-
 use WildPHP\Core\Connection\IRCMessages\PRIVMSG;
 use WildPHP\Core\Connection\Queue;
 use WildPHP\Core\ContainerTrait;
@@ -167,7 +165,9 @@ class LinkSniffer
 
 			$msg = '[' . $incomingIrcMessage->getNickname() . '] ' . $title;
 
-			$queue->privmsg($channel, $msg);
+			$privmsg = new PRIVMSG($channel, $msg);
+			$privmsg->setMessageParameters(['relay_ignore']);
+			$queue->insertMessage($privmsg);
 		}
 		catch (\InvalidArgumentException | RequestException $e)
 		{
