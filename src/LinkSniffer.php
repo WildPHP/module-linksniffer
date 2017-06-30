@@ -16,13 +16,13 @@ use WildPHP\Core\Commands\CommandHandler;
 use WildPHP\Core\Commands\CommandHelp;
 use WildPHP\Core\ComponentContainer;
 use WildPHP\Core\Configuration\Configuration;
-use WildPHP\Core\Configuration\ConfigurationItemNotFoundException;
 use WildPHP\Core\Connection\IRCMessages\PRIVMSG;
 use WildPHP\Core\Connection\Queue;
 use WildPHP\Core\ContainerTrait;
 use WildPHP\Core\EventEmitter;
 use WildPHP\Core\Logger\Logger;
 use WildPHP\Core\Users\User;
+use Yoshi2889\Container\NotFoundException;
 
 class LinkSniffer
 {
@@ -113,8 +113,9 @@ class LinkSniffer
 			if (is_array($blockedChannels) && in_array($channel, $blockedChannels))
 				return;
 		}
-		catch (ConfigurationItemNotFoundException $e)
+		catch (NotFoundException $e)
 		{
+			// Gracefully fail this exception because it is not a required config item.
 		}
 
 		$message = $incomingIrcMessage->getMessage();
