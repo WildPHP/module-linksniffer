@@ -22,7 +22,6 @@ use WildPHP\Core\ContainerTrait;
 use WildPHP\Core\EventEmitter;
 use WildPHP\Core\Logger\Logger;
 use WildPHP\Core\Users\User;
-use Yoshi2889\Container\NotFoundException;
 
 class LinkSniffer
 {
@@ -106,17 +105,11 @@ class LinkSniffer
 	{
 		$channel = $incomingIrcMessage->getChannel();
 
-		try
-		{
+		if (Configuration::fromContainer($this->getContainer())->offsetExists('disablelinksniffer'))
 			$blockedChannels = Configuration::fromContainer($this->getContainer())['disablelinksniffer'];
 
-			if (is_array($blockedChannels) && in_array($channel, $blockedChannels))
-				return;
-		}
-		catch (NotFoundException $e)
-		{
-			// Gracefully fail this exception because it is not a required config item.
-		}
+		if (!empty($blockedChannels) && is_array($blockedChannels) && in_array($channel, $blockedChannels))
+			return;
 
 		$message = $incomingIrcMessage->getMessage();
 
