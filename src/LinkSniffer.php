@@ -108,9 +108,7 @@ class LinkSniffer
 
 		try
 		{
-			$blockedChannels = Configuration::fromContainer($this->getContainer())
-				->get('disablelinksniffer')
-				->getValue();
+			$blockedChannels = Configuration::fromContainer($this->getContainer())['disablelinksniffer'];
 
 			if (is_array($blockedChannels) && in_array($channel, $blockedChannels))
 				return;
