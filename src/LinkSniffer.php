@@ -21,9 +21,10 @@ use WildPHP\Core\Connection\Queue;
 use WildPHP\Core\ContainerTrait;
 use WildPHP\Core\EventEmitter;
 use WildPHP\Core\Logger\Logger;
+use WildPHP\Core\Modules\BaseModule;
 use WildPHP\Core\Users\User;
 
-class LinkSniffer
+class LinkSniffer extends BaseModule
 {
 	use ContainerTrait;
 	protected $lastLinks = [];
