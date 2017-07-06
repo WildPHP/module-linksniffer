@@ -9,8 +9,8 @@
         }
     ],
     "require": {
-        "guzzlehttp/guzzle": "^6.2",
-        "fabpot/goutte": "^v3.2"
+        "yoshi2889/collections": "^0.1",
+        "react/http-client": "v0.5.2"
     },
     "autoload": {
         "psr-4": {

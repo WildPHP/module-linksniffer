@@ -9,93 +9,36 @@
 
 namespace WildPHP\Modules\LinkSniffer;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\RequestException;
-use WildPHP\Core\Channels\Channel;
-use WildPHP\Core\Commands\CommandHandler;
-use WildPHP\Core\Commands\CommandHelp;
 use WildPHP\Core\ComponentContainer;
 use WildPHP\Core\Configuration\Configuration;
 use WildPHP\Core\Connection\IRCMessages\PRIVMSG;
 use WildPHP\Core\Connection\Queue;
 use WildPHP\Core\ContainerTrait;
 use WildPHP\Core\EventEmitter;
-use WildPHP\Core\Logger\Logger;
 use WildPHP\Core\Modules\BaseModule;
-use WildPHP\Core\Users\User;
+use WildPHP\Modules\LinkSniffer\Backends\LinkTitle;
 
 class LinkSniffer extends BaseModule
 {
 	use ContainerTrait;
-	protected $lastLinks = [];
+
+	/**
+	 * @var BackendCollection
+	 */
+	protected $backendCollection;
 
 	public function __construct(ComponentContainer $container)
 	{
 		EventEmitter::fromContainer($container)
 			->on('irc.line.in.privmsg', [$this, 'sniffLinks']);
 
-		$commandHelp = new CommandHelp();
-		$commandHelp->addPage('Shortens a given link.');
-		$commandHelp->addPage('Usage: shorten [URL]');
-		CommandHandler::fromContainer($container)
-			->registerCommand('shorten', [$this, 'shortenCommand'], $commandHelp, 1, 1);
-
-		$commandHelp = new CommandHelp();
-		$commandHelp->addPage('Shortens the last recognized link given in the channel.');
-		CommandHandler::fromContainer($container)
-			->registerCommand('shortenlast', [$this, 'shortenlastCommand'], $commandHelp, 0, 0);
-
 		$this->setContainer($container);
-	}
 
-	/**
-	 * @param Channel $source
-	 * @param User $user
-	 * @param array $args
-	 * @param ComponentContainer $container
-	 */
-	public function shortenlastCommand(Channel $source, User $user, array $args, ComponentContainer $container)
-	{
-		$channel = $source->getName();
-		$lastLink = $this->lastLinks[$channel] ?? '';
+		$backends = [
+			new LinkTitle($container)
+		];
 
-		if (empty($lastLink))
-		{
-			Queue::fromContainer($container)
-				->privmsg($source->getName(), $user->getNickname() . ', I do not have a stored link for this channel.');
-
-			return;
-		}
-
-		$shortenedLink = self::getShortenedLink($lastLink);
-
-		if (!$shortenedLink)
-		{
-			Queue::fromContainer($container)
-				->privmsg($source->getName(), $user->getNickname() . ', I was unable to create a shortened link for this URL: ' . $lastLink);
-		}
-		else
-			Queue::fromContainer($container)
-				->privmsg($source->getName(), $user->getNickname() . ', shortened URL: ' . $shortenedLink . ' (shortened from ' . $lastLink . ')');
-	}
-
-	/**
-	 * @param Channel $source
-	 * @param User $user
-	 * @param array $args
-	 * @param ComponentContainer $container
-	 */
-	public function shortenCommand(Channel $source, User $user, array $args, ComponentContainer $container)
-	{
-		$uri = $args[0];
-		$shortenedUri = self::getShortenedLink($uri);
-
-		if ($shortenedUri)
-			Queue::fromContainer($container)
-				->privmsg($source->getName(), $user->getNickname() . ', here is your shortened link: ' . $shortenedUri);
-		else
-			Queue::fromContainer($container)
-				->privmsg($source->getName(), $user->getNickname() . ', I was unable to create a shortened link for this URL.');
+		$this->backendCollection = new BackendCollection($backends);
 	}
 
 	/**
@@ -119,89 +62,16 @@ class LinkSniffer extends BaseModule
 		if ($uri == false)
 			return;
 
-		$this->lastLinks[$channel] = $uri;
+		$backend = $this->backendCollection->findBackendForUrl($uri);
+		$promise = $backend->request($uri);
 
-		$guzzleClient = new Client([
-			'connect_timeout' => 3.0,
-			'timeout' => 3.0
-		]);
-		$goutteClient = new \Goutte\Client();
-		$goutteClient->setClient($guzzleClient);
-
-		try
+		$promise->then(function (BackendResult $result) use ($incomingIrcMessage, $queue, $channel)
 		{
-			$response = $guzzleClient->head($uri, [
-				'connect_timeout' => 3.0,
-				'allow_redirects' => false,
-				'timeout' => 3.0,
-			]);
-
-			$contentType = $response->getHeader('Content-Type')[0] ?? 'unknown';
-			$contentType = explode(';', $contentType)[0];
-
-			if ($contentType == 'text/html')
-			{
-				$crawler = $goutteClient->request('GET', $uri);
-				$title = $crawler->filterXPath('//title')
-					->text();
-			}
-			else
-				$title = 'Content type: ' . $contentType;
-
-			if (!$title)
-				return;
-
-			$title = trim(str_replace("\n", '', str_replace("\r", "\n", $title)));
-
-			if (strlen($title) > 150)
-				$title = substr($title, 0, 150) . '...';
-
-			$msg = '[' . $incomingIrcMessage->getNickname() . '] ' . $title;
-
+			$msg = '[' . $incomingIrcMessage->getNickname() . '] ' . $result->getResult();
 			$privmsg = new PRIVMSG($channel, $msg);
 			$privmsg->setMessageParameters(['relay_ignore']);
 			$queue->insertMessage($privmsg);
-		}
-		catch (\InvalidArgumentException | RequestException $e)
-		{
-			Logger::fromContainer($this->getContainer())
-				->warning('Exception encountered', [
-					'message' => $e->getMessage()
-				]);
-		}
-	}
-
-	/**
-	 * @param string $uri
-	 * @param Client|null $client
-	 *
-	 * @return bool|string
-	 */
-	public static function getShortenedLink(string $uri, Client $client = null)
-	{
-		if (is_null($client))
-			$client = new Client([
-				'connect_timeout' => 3.0,
-				'timeout' => 3.0
-			]);
-
-		try
-		{
-			$encodedUri = urlencode($uri);
-			$shortenedLinkResponse = $client->get('https://is.gd/create.php?format=json&url=' . $encodedUri);
-			$jsonBody = $shortenedLinkResponse->getBody();
-
-			$json = json_decode($jsonBody, true);
-
-			if (!$json || !array_key_exists('shorturl', $json))
-				return false;
-
-			return $json['shorturl'];
-		}
-		catch (RequestException $e)
-		{
-			return false;
-		}
+		});
 	}
 
 	/**
