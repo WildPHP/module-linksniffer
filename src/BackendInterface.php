@@ -9,17 +9,17 @@
 namespace WildPHP\Modules\LinkSniffer;
 
 
+use React\EventLoop\LoopInterface;
 use React\Promise\PromiseInterface;
-use WildPHP\Core\ComponentContainer;
 
 interface BackendInterface
 {
 	/**
 	 * BackendInterface constructor.
 	 *
-	 * @param ComponentContainer $container
+	 * @param LoopInterface $loop
 	 */
-	public function __construct(ComponentContainer $container);
+	public function __construct(LoopInterface $loop);
 
 	/**
 	 * @param string $url

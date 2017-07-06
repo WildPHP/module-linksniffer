@@ -35,7 +35,7 @@ class LinkSniffer extends BaseModule
 		$this->setContainer($container);
 
 		$backends = [
-			new LinkTitle($container)
+			new LinkTitle($container->getLoop())
 		];
 
 		$this->backendCollection = new BackendCollection($backends);

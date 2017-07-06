@@ -9,20 +9,17 @@
 namespace WildPHP\Modules\LinkSniffer\Backends;
 
 
+use React\EventLoop\LoopInterface;
 use React\HttpClient\Client;
 use React\HttpClient\Response;
 use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
-use WildPHP\Core\ComponentContainer;
-use WildPHP\Core\ContainerTrait;
 use WildPHP\Modules\LinkSniffer\BackendException;
 use WildPHP\Modules\LinkSniffer\BackendInterface;
 use WildPHP\Modules\LinkSniffer\BackendResult;
 
 class LinkTitle implements BackendInterface
 {
-	use ContainerTrait;
-
 	/**
 	 * @var string
 	 */
@@ -36,13 +33,11 @@ class LinkTitle implements BackendInterface
 	/**
 	 * LinkTitle constructor.
 	 *
-	 * @param ComponentContainer $container
+	 * @param LoopInterface $loop
 	 */
-	public function __construct(ComponentContainer $container)
+	public function __construct(LoopInterface $loop)
 	{
-		$this->setContainer($container);
-
-		$this->httpClient = new Client($this->getContainer()->getLoop());
+		$this->httpClient = new Client($loop);
 	}
 
 	/**
