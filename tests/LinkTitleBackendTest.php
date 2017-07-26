@@ -11,6 +11,9 @@ use WildPHP\Modules\LinkSniffer\Backends\LinkTitle;
 
 class LinkTitleBackendTest extends TestCase
 {
+	/**
+	 * @return LinkTitle
+	 */
 	public function initializeLinkTitleBackend()
 	{
 		$loop = \React\EventLoop\Factory::create();

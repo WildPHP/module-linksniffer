@@ -14,6 +14,11 @@ use Yoshi2889\Collections\Collection;
 
 class BackendCollection extends Collection
 {
+	/**
+	 * BackendCollection constructor.
+	 *
+	 * @param array $initialValues
+	 */
 	public function __construct(array $initialValues = [])
 	{
 		parent::__construct(Types::instanceof(BackendInterface::class), $initialValues);

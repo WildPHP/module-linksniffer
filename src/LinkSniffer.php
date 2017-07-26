@@ -27,6 +27,11 @@ class LinkSniffer extends BaseModule
 	 */
 	protected $backendCollection;
 
+	/**
+	 * LinkSniffer constructor.
+	 *
+	 * @param ComponentContainer $container
+	 */
 	public function __construct(ComponentContainer $container)
 	{
 		EventEmitter::fromContainer($container)

@@ -21,6 +21,12 @@ class BackendResult
 	 */
 	protected $result = '';
 
+	/**
+	 * BackendResult constructor.
+	 *
+	 * @param string $url
+	 * @param string $result
+	 */
 	public function __construct(string $url, string $result)
 	{
 		$this->setUrl($url);
