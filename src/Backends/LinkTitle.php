@@ -53,8 +53,6 @@ class LinkTitle implements BackendInterface
 			if ($response->getCode() == 320)
 			{
 				$location = $response->getHeaders()['Location'] ?? '';
-				$request->end();
-
 				$deferred->resolve(new BackendResult($location, 'Redirect (new location: ' . $location . ')'));
 				return;
 			}
@@ -62,7 +60,6 @@ class LinkTitle implements BackendInterface
 			if ($response->getCode() != 200)
 			{
 				$deferred->reject(new BackendException('Response was not successful (status code != 200 or too many redirects)'));
-				$request->end();
 				return;
 			}
 
@@ -70,7 +67,6 @@ class LinkTitle implements BackendInterface
 			if (empty($contentType) || explode(';', $contentType)[0] != 'text/html')
 			{
 				$deferred->reject(new BackendException('Response is not an HTML file; cannot parse'));
-				$request->end();
 				return;
 			}
 
@@ -79,11 +75,12 @@ class LinkTitle implements BackendInterface
 			{
 				$buffer .= $chunk;
 				$title = $this->tryParseTitleFromBuffer($buffer);
+				xdebug_break();
 
 				if ($title)
 				{
 					$deferred->resolve(new BackendResult($url, $title));
-					$request->end();
+					$response->removeAllListeners('data');
 				}
 			});
 
