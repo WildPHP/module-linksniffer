@@ -50,7 +50,8 @@ class LinkTitle implements BackendInterface
 		$request = $this->httpClient->request('GET', $url);
 		$request->on('response', function (Response $response) use ($deferred, $url, $request)
 		{
-			if ($response->getCode() == 320)
+			xdebug_break();
+			if ($response->getCode() == 302)
 			{
 				$location = $response->getHeaders()['Location'] ?? '';
 				$deferred->resolve(new BackendResult($location, 'Redirect (new location: ' . $location . ')'));
