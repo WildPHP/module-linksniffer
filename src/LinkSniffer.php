@@ -15,6 +15,7 @@ use WildPHP\Core\Connection\IRCMessages\PRIVMSG;
 use WildPHP\Core\Connection\Queue;
 use WildPHP\Core\ContainerTrait;
 use WildPHP\Core\EventEmitter;
+use WildPHP\Core\Logger\Logger;
 use WildPHP\Core\Modules\BaseModule;
 use WildPHP\Modules\LinkSniffer\Backends\LinkTitle;
 
@@ -76,6 +77,12 @@ class LinkSniffer extends BaseModule
 			$privmsg = new PRIVMSG($channel, $msg);
 			$privmsg->setMessageParameters(['relay_ignore']);
 			$queue->insertMessage($privmsg);
+		}, function (\Exception $exception) use ($uri)
+		{
+			Logger::fromContainer($this->getContainer())->debug('Unsuccessful backend request', [
+				'uri' => $uri,
+				'exception' => $exception->getMessage()
+			]);
 		});
 	}
 

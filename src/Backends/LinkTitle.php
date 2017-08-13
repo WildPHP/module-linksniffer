@@ -43,23 +43,40 @@ class LinkTitle implements BackendInterface
 	/**
 	 * @inheritdoc
 	 */
-	public function request(string $url): PromiseInterface
+	public function request(string $url, int $depth = 0): PromiseInterface
 	{
 		$deferred = new Deferred();
 
 		$request = $this->httpClient->request('GET', $url);
-		$request->on('response', function (Response $response) use ($deferred, $url, $request)
+		$request->on('response', function (Response $response) use ($deferred, $url, $request, $depth)
 		{
 			if ($response->getCode() == 302)
 			{
 				$location = $response->getHeaders()['Location'] ?? '';
-				$deferred->resolve(new BackendResult($location, 'Redirect (new location: ' . $location . ')'));
+				
+				if (empty($location) || $depth > 3)
+				{
+					$deferred->reject(new BackendException('Too many redirects'));
+
+					return;
+				}
+				
+				$promise = $this->request($location, $depth + 1);
+				
+				$promise->then(function (BackendResult $result) use ($deferred)
+				{
+					$deferred->resolve($result);
+				}, function (\Exception $exception) use ($deferred)
+				{
+					$deferred->reject($exception);
+				});
+				
 				return;
 			}
 
 			if ($response->getCode() != 200)
 			{
-				$deferred->reject(new BackendException('Response was not successful (status code != 200 or too many redirects)'));
+				$deferred->reject(new BackendException('Response was not successful (status code != 200)'));
 				return;
 			}
 
@@ -109,7 +126,7 @@ class LinkTitle implements BackendInterface
 		if (preg_match("/\<title\>(.*)\<\/title\>/i", $buffer, $matches) == false)
 			return false;
 
-		return trim($matches[1]);
+		return htmlspecialchars_decode(trim($matches[1]));
 	}
 
 	/**
