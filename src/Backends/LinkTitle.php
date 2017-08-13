@@ -75,7 +75,6 @@ class LinkTitle implements BackendInterface
 			{
 				$buffer .= $chunk;
 				$title = $this->tryParseTitleFromBuffer($buffer);
-				xdebug_break();
 
 				if ($title)
 				{
