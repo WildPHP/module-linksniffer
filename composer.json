@@ -10,7 +10,7 @@
     ],
     "require": {
         "yoshi2889/collections": "^0.1",
-        "react/http-client": "v0.5.2"
+        "react/http-client": "^0.5"
     },
     "autoload": {
         "psr-4": {
