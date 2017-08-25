@@ -126,7 +126,7 @@ class LinkTitle implements BackendInterface
 		if (preg_match("/\<title\>(.*)\<\/title\>/i", $buffer, $matches) == false)
 			return false;
 
-		return htmlspecialchars_decode(trim($matches[1]));
+		return htmlspecialchars_decode(trim($matches[1]), ENT_QUOTES);
 	}
 
 	/**
