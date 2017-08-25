@@ -11,6 +11,7 @@ namespace WildPHP\Modules\LinkSniffer\Backends;
 
 use React\EventLoop\LoopInterface;
 use React\HttpClient\Client;
+use React\HttpClient\Request;
 use React\HttpClient\Response;
 use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
@@ -48,29 +49,34 @@ class LinkTitle implements BackendInterface
 		$deferred = new Deferred();
 
 		$request = $this->httpClient->request('GET', $url);
-		$request->on('response', function (Response $response) use ($deferred, $url, $request, $depth)
+		
+		$request->on('response', $this->handleResponseClosure($deferred, $url, $request, $depth));
+		
+		$request->on('error', function (\Exception $e) use ($deferred)
+		{
+			$deferred->reject($e);
+		});
+		$request->end();
+
+		return $deferred->promise();
+	}
+
+	/**
+	 * @param Deferred $deferred
+	 * @param string $url
+	 * @param Request $request
+	 * @param int $depth
+	 *
+	 * @return \Closure
+	 */
+	public function handleResponseClosure(Deferred $deferred, string $url, Request $request, int $depth = 0): \Closure
+	{
+		return function (Response $response) use ($deferred, $url, $request, $depth)
 		{
 			if ($response->getCode() == 302)
 			{
-				$location = $response->getHeaders()['Location'] ?? '';
-				
-				if (empty($location) || $depth > 3)
-				{
-					$deferred->reject(new BackendException('Too many redirects'));
+				$this->redirect($response, $deferred, $depth);
 
-					return;
-				}
-				
-				$promise = $this->request($location, $depth + 1);
-				
-				$promise->then(function (BackendResult $result) use ($deferred)
-				{
-					$deferred->resolve($result);
-				}, function (\Exception $exception) use ($deferred)
-				{
-					$deferred->reject($exception);
-				});
-				
 				return;
 			}
 
@@ -88,30 +94,58 @@ class LinkTitle implements BackendInterface
 			}
 
 			$buffer = '';
-			$response->on('data', function ($chunk) use (&$buffer, $deferred, $response, $url, $request)
-			{
-				$buffer .= $chunk;
-				$title = $this->tryParseTitleFromBuffer($buffer);
-
-				if ($title)
-				{
-					$deferred->resolve(new BackendResult($url, $title));
-					$response->removeAllListeners('data');
-				}
-			});
+			$response->on('data', $this->handleIncomingDataChunkClosure($buffer, $deferred, $response, $url, $request));
 
 			$response->on('end', function () use ($deferred)
 			{
 				$deferred->reject(new BackendException('No link parsed before end of page; no link found'));
 			});
-		});
-		$request->on('error', function (\Exception $e) use ($deferred)
-		{
-			$deferred->reject($e);
-		});
-		$request->end();
+		};
+	}
 
-		return $deferred->promise();
+	/**
+	 * @param Response $response
+	 * @param Deferred $deferred
+	 * @param int $depth
+	 */
+	public function redirect(Response $response, Deferred $deferred, int $depth = 0)
+	{
+		$location = $response->getHeaders()['Location'] ?? '';
+
+		if (empty($location) || $depth > 3)
+		{
+			$deferred->reject(new BackendException('Too many redirects'));
+
+			return;
+		}
+
+		$promise = $this->request($location, $depth + 1);
+
+		$promise->then([$deferred, 'resolve'], [$deferred, 'reject']);
+	}
+
+	/**
+	 * @param string $buffer
+	 * @param Deferred $deferred
+	 * @param Response $response
+	 * @param string $url
+	 * @param Request $request
+	 *
+	 * @return \Closure
+	 */
+	public function handleIncomingDataChunkClosure(string &$buffer, Deferred $deferred, Response $response, string $url, Request $request): \Closure
+	{
+		return function ($chunk) use (&$buffer, $deferred, $response, $url, $request)
+		{
+			$buffer .= $chunk;
+			$title = $this->tryParseTitleFromBuffer($buffer);
+
+			if ($title)
+			{
+				$deferred->resolve(new BackendResult($url, $title));
+				$response->removeAllListeners('data');
+			}
+		};
 	}
 
 	/**
