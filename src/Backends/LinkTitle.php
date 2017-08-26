@@ -8,7 +8,6 @@
 
 namespace WildPHP\Modules\LinkSniffer\Backends;
 
-
 use React\EventLoop\LoopInterface;
 use React\HttpClient\Client;
 use React\HttpClient\Request;
@@ -80,9 +79,9 @@ class LinkTitle implements BackendInterface
 				return;
 			}
 
-			if ($response->getCode() != 200)
+			if ($response->getCode() < 200 || $response->getCode() > 300)
 			{
-				$deferred->reject(new BackendException('Response was not successful (status code != 200)'));
+				$deferred->reject(new BackendException('Response was not successful (status code != 2xx)'));
 				return;
 			}
 
