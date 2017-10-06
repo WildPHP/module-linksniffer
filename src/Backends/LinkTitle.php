@@ -52,10 +52,7 @@ class LinkTitle implements BackendInterface
 		
 		$request->on('response', $this->handleResponseClosure($deferred, $url, $request, $depth));
 		
-		$request->on('error', function (\Exception $e) use ($deferred)
-		{
-			$deferred->reject($e);
-		});
+		$request->on('error', [$deferred, 'reject']);
 		$request->end();
 
 		return $deferred->promise();
@@ -98,7 +95,7 @@ class LinkTitle implements BackendInterface
 
 			$response->on('end', function () use ($deferred)
 			{
-				$deferred->reject(new BackendException('No link parsed before end of page; no link found'));
+				$deferred->reject(new BackendException('No title parsed before end of page; no title found'));
 			});
 		};
 	}
@@ -157,7 +154,7 @@ class LinkTitle implements BackendInterface
 	{
 		$buffer = trim(preg_replace('/\s+/', ' ', $buffer));
 
-		if (preg_match("/\<title\>(.*)\<\/title\>/i", $buffer, $matches) == false)
+		if (preg_match("/\<title\>(.*?)\<\/title\>/i", $buffer, $matches) == false)
 			return false;
 
 		return htmlspecialchars_decode(trim($matches[1]), ENT_QUOTES);
