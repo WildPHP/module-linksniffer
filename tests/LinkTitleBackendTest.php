@@ -11,25 +11,20 @@ use WildPHP\Modules\LinkSniffer\Backends\LinkTitle;
 
 class LinkTitleBackendTest extends TestCase
 {
-	/**
-	 * @return LinkTitle
-	 */
-	public function initializeLinkTitleBackend()
-	{
-		$loop = \React\EventLoop\Factory::create();
-		return new LinkTitle($loop);
-	}
 
 	public function testLinkTitle()
 	{
 		$expected = new \WildPHP\Modules\LinkSniffer\BackendResult('https://www.google.nl/', 'Google');
 
-		$linkTitleBackend = $this->initializeLinkTitleBackend();
+		$loop = \React\EventLoop\Factory::create();
+		$linkTitleBackend = new LinkTitle($loop);
 		$promise = $linkTitleBackend->request('https://www.google.nl/');
 
 		$promise->then(function (\WildPHP\Modules\LinkSniffer\BackendResult $result) use ($expected)
 		{
 			self::assertEquals($expected, $result);
 		});
+
+		$loop->run();
 	}
 }
