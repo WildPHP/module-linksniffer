@@ -93,9 +93,9 @@ class LinkTitle implements BackendInterface
 			$buffer = '';
 			$response->on('data', $this->handleIncomingDataChunkClosure($buffer, $deferred, $response, $url, $request));
 
-			$response->on('end', function () use ($deferred)
+			$response->on('end', function () use ($deferred, $url)
 			{
-				$deferred->reject(new BackendException('No title parsed before end of page; no title found'));
+				$deferred->resolve(new BackendResult($url, '(no page title found, content-type: text/html)'));
 			});
 		};
 	}
@@ -140,6 +140,13 @@ class LinkTitle implements BackendInterface
 			if ($title)
 			{
 				$deferred->resolve(new BackendResult($url, $title));
+				$response->removeAllListeners('data');
+			}
+
+			// First 16K characters
+			if (strlen($buffer) > 16348)
+			{
+				$deferred->resolve(new BackendResult($url, '(no page title found, content-type: text/html)'));
 				$response->removeAllListeners('data');
 			}
 		};
