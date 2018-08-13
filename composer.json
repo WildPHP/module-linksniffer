@@ -9,6 +9,7 @@
         }
     ],
     "require": {
+        "ext-json": "*",
         "yoshi2889/collections": "^0.1",
         "react/http-client": "^0.5"
     },
