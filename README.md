@@ -8,7 +8,7 @@
 This module shows information about a link when it is posted in a channel.
 
 ## System Requirements
-If your setup can run the main bot, it can run this module as well.
+This module requires the `json` php extension for various sub-modules to work.
 
 ## Installation
 To install this module, we will use `composer`:
@@ -31,11 +31,7 @@ disablelinksniffer:
 ```
 
 ## Usage
-This module allows you to shorten links. It stores the last link sent in a channel.
-
-Use the `shortenlast` command to shorten the stored link.
-
-Use `shorten [url]` to shorten any given link.
+This module does not have additional usage information.
 
 ## License
 This module is licensed under the MIT license. Please see `LICENSE` to read it.
