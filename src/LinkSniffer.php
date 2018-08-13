@@ -18,6 +18,7 @@ use WildPHP\Core\EventEmitter;
 use WildPHP\Core\Logger\Logger;
 use WildPHP\Core\Modules\BaseModule;
 use WildPHP\Modules\LinkSniffer\Backends\LinkTitle;
+use WildPHP\Modules\LinkSniffer\Backends\Wikipedia;
 
 class LinkSniffer extends BaseModule
 {
@@ -41,6 +42,7 @@ class LinkSniffer extends BaseModule
 		$this->setContainer($container);
 
 		$backends = [
+		    new Wikipedia($container->getLoop()),
 			new LinkTitle($container->getLoop())
 		];
 
