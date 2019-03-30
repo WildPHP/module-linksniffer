@@ -83,7 +83,7 @@ class LinkTitle implements BackendInterface
 				return;
 			}
 
-			$contentType = $response->getHeaders()['Content-Type'] ?? '';
+			$contentType = $response->getHeaders()['Content-Type'] ?? $response->getHeaders()['Content-type'] ?? $response->getHeaders()['content-type'] ?? '';
 			if (empty($contentType) || explode(';', $contentType)[0] != 'text/html')
 			{
 				$deferred->reject(new BackendException('Response is not an HTML file; cannot parse'));
