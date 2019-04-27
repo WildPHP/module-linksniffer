@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Copyright 2017 The WildPHP Team
+ * Copyright 2019 The WildPHP Team
  *
  * You should have received a copy of the MIT license with the project.
  * See the LICENSE file for more information.
@@ -9,116 +9,139 @@
 
 namespace WildPHP\Modules\LinkSniffer;
 
-use WildPHP\Core\ComponentContainer;
+use Evenement\EventEmitterInterface;
+use Exception;
+use Psr\Log\LoggerInterface;
+use React\EventLoop\LoopInterface;
+use RuntimeException;
 use WildPHP\Core\Configuration\Configuration;
-use WildPHP\Core\Connection\IRCMessages\PRIVMSG;
-use WildPHP\Core\Connection\Queue;
-use WildPHP\Core\ContainerTrait;
-use WildPHP\Core\EventEmitter;
-use WildPHP\Core\Logger\Logger;
-use WildPHP\Core\Modules\BaseModule;
+use WildPHP\Core\Events\IncomingIrcMessageEvent;
+use WildPHP\Core\Queue\IrcMessageQueue;
+use WildPHP\Core\Queue\IrcMessageQueueItem;
+use WildPHP\Messages\Privmsg;
 use WildPHP\Modules\LinkSniffer\Backends\LinkTitle;
 use WildPHP\Modules\LinkSniffer\Backends\Wikipedia;
 
-class LinkSniffer extends BaseModule
+class LinkSniffer
 {
-	use ContainerTrait;
+    /**
+     * @var BackendCollection
+     */
+    protected $backendCollection;
 
-	/**
-	 * @var BackendCollection
-	 */
-	protected $backendCollection;
+    /**
+     * @var Configuration
+     */
+    private $configuration;
 
-	/**
-	 * LinkSniffer constructor.
-	 *
-	 * @param ComponentContainer $container
-	 */
-	public function __construct(ComponentContainer $container)
-	{
-		EventEmitter::fromContainer($container)
-			->on('irc.line.in.privmsg', [$this, 'sniffLinks']);
+    /**
+     * @var IrcMessageQueue
+     */
+    private $queue;
 
-		$this->setContainer($container);
+    /**
+     * @var LoggerInterface
+     */
+    private $logger;
 
-		$backends = [
-		    new Wikipedia($container->getLoop()),
-			new LinkTitle($container->getLoop())
-		];
+    /**
+     * LinkSniffer constructor.
+     *
+     * @param EventEmitterInterface $eventEmitter
+     * @param LoopInterface $loop
+     * @param Configuration $configuration
+     * @param IrcMessageQueue $queue
+     * @param LoggerInterface $logger
+     */
+    public function __construct(
+        EventEmitterInterface $eventEmitter,
+        LoopInterface $loop,
+        Configuration $configuration,
+        IrcMessageQueue $queue,
+        LoggerInterface $logger
+    ) {
+        $eventEmitter->on('irc.msg.in.privmsg', [$this, 'sniffLinks']);
 
-		$this->backendCollection = new BackendCollection($backends);
-	}
+        $backends = [
+            new Wikipedia($loop),
+            new LinkTitle($loop)
+        ];
 
-	/**
-	 * @param PRIVMSG $incomingIrcMessage
-	 * @param Queue $queue
-	 */
-	public function sniffLinks(PRIVMSG $incomingIrcMessage, Queue $queue)
-	{
-		$channel = $incomingIrcMessage->getChannel();
+        $this->backendCollection = new BackendCollection($backends);
+        $this->configuration = $configuration;
+        $this->queue = $queue;
+        $this->logger = $logger;
+    }
 
-		if (Configuration::fromContainer($this->getContainer())->offsetExists('disablelinksniffer'))
-			$blockedChannels = Configuration::fromContainer($this->getContainer())['disablelinksniffer'];
+    /**
+     * @param IncomingIrcMessageEvent $event
+     * @throws Exception
+     */
+    public function sniffLinks(IncomingIrcMessageEvent $event): void
+    {
+        /** @var Privmsg $incomingIrcMessage */
+        $incomingIrcMessage = $event->getIncomingMessage();
+        $channel = $incomingIrcMessage->getChannel();
 
-		if (!empty($blockedChannels) && is_array($blockedChannels) && in_array($channel, $blockedChannels))
-			return;
+        if ($this->configuration->offsetExists('disablelinksniffer')) {
+            $blockedChannels = $this->configuration['disablelinksniffer'];
+        }
 
-		$message = $incomingIrcMessage->getMessage();
+        if (!empty($blockedChannels) && is_array($blockedChannels) && in_array($channel, $blockedChannels, true)) {
+            return;
+        }
 
-		$uri = self::extractUriFromString($message);
+        $message = $incomingIrcMessage->getMessage();
 
-		if ($uri == false)
-			return;
+        $uri = self::extractUriFromString($message);
 
-		$backend = $this->backendCollection->findBackendForUrl($uri);
-		$promise = $backend->request($uri);
+        if ($uri === false) {
+            return;
+        }
 
-		$promise->then(function (BackendResult $result) use ($incomingIrcMessage, $queue, $channel)
-		{
-			$msg = '[' . $incomingIrcMessage->getNickname() . '] ' . $result->getResult();
-			$privmsg = new PRIVMSG($channel, $msg);
-			$privmsg->setMessageParameters(['relay_ignore']);
-			$queue->insertMessage($privmsg);
-		}, function (\Exception $exception) use ($uri)
-		{
-			Logger::fromContainer($this->getContainer())->debug('Unsuccessful backend request', [
-				'uri' => $uri,
-				'exception' => $exception->getMessage()
-			]);
-		});
-	}
+        $backend = $this->backendCollection->findBackendForUrl($uri);
+        $promise = $backend->request($uri);
 
-	/**
-	 * @param $string
-	 *
-	 * @return false|string
-	 */
-	public static function extractUriFromString($string)
-	{
-		if (empty($string))
-			return false;
+        $promise->then(function (BackendResult $result) use ($incomingIrcMessage, $channel) {
+            $msg = '[' . $incomingIrcMessage->getNickname() . '] ' . $result->getResult();
+            $privmsg = new Privmsg($channel, $msg);
+            $privmsg->setTags(['relay_ignore']);
+            $this->queue->enqueue(new IrcMessageQueueItem($privmsg));
+        }, function (RuntimeException $exception) use ($uri) {
+            $this->logger->debug('Unsuccessful backend request', [
+                'uri' => $uri,
+                'exception' => $exception->getMessage()
+            ]);
+        });
+    }
 
-		elseif (strpos($string, '!nosniff') !== false)
-			return false;
+    /**
+     * @param $string
+     *
+     * @return false|string
+     */
+    public static function extractUriFromString($string)
+    {
+        if (empty($string)) {
+            return false;
+        }
 
-		$hasMatches = preg_match('/https?\:\/\/[A-Za-z0-9\-\/._~:?#@!$&\'()*+,;=%]+/i', $string, $matches);
+        if (strpos($string, '!nosniff') !== false) {
+            return false;
+        }
 
-		if (!$hasMatches || empty($matches))
-			return false;
+        $hasMatches = preg_match('/https?\:\/\/[A-Za-z0-9\-\/._~:?#@!$&\'()*+,;=%]+/i', $string, $matches);
 
-		$possibleUri = $matches[0];
+        if (!$hasMatches || empty($matches)) {
+            return false;
+        }
 
-		if (filter_var($possibleUri, FILTER_VALIDATE_URL) === false)
-			return false;
+        $possibleUri = $matches[0];
 
-		return $possibleUri;
-	}
+        if (filter_var($possibleUri, FILTER_VALIDATE_URL) === false) {
+            return false;
+        }
 
-	/**
-	 * @return string
-	 */
-	public static function getSupportedVersionConstraint(): string
-	{
-		return '^3.0.0';
-	}
+        return $possibleUri;
+    }
 }

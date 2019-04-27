@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright 2018 The WildPHP Team
+ * Copyright 2019 The WildPHP Team
  *
  * You should have received a copy of the MIT license with the project.
  * See the LICENSE file for more information.
@@ -8,6 +8,7 @@
 
 namespace WildPHP\Modules\LinkSniffer\Backends;
 
+use Closure;
 use React\HttpClient\Client;
 use React\HttpClient\Request;
 use React\HttpClient\Response;
@@ -44,10 +45,13 @@ class Wikipedia implements BackendInterface
      * @param string $url
      *
      * @return PromiseInterface
+     * @throws BackendException
      */
     public function request(string $url): PromiseInterface
     {
-        preg_match(self::$validationRegex, $url, $matches);
+        if (!preg_match(self::$validationRegex, $url, $matches)) {
+            throw new BackendException('Invalid URL');
+        }
 
         $language = $matches[1];
         $article = $matches[2];
@@ -63,7 +67,7 @@ class Wikipedia implements BackendInterface
 
         $request = $this->httpClient->request('GET', $apiUrl);
 
-        $request->on('response', $this->handleResponseClosure($deferred, $url, $request));
+        $request->on('response', $this->handleResponseClosure($deferred, $url));
 
         $request->on('error', [$deferred, 'reject']);
         $request->end();
@@ -74,36 +78,28 @@ class Wikipedia implements BackendInterface
     /**
      * @param Deferred $deferred
      * @param string $url
-     * @param Request $request
-     * @param int $depth
-     *
-     * @return \Closure
+     * @return Closure
      */
-    public function handleResponseClosure(Deferred $deferred, string $url, Request $request): \Closure
+    public function handleResponseClosure(Deferred $deferred, string $url): Closure
     {
-        return function (Response $response) use ($deferred, $url, $request)
-        {
-            if ($response->getCode() != 200)
-            {
+        return static function (Response $response) use ($deferred, $url) {
+            if ($response->getCode() !== 200) {
                 $deferred->reject(new BackendException('Response was not successful (status code != 200)'));
                 return;
             }
 
             $contentType = $response->getHeaders()['Content-Type'] ?? '';
-            if (empty($contentType) || explode(';', $contentType)[0] != 'application/json')
-            {
+            if (empty($contentType) || explode(';', $contentType)[0] !== 'application/json') {
                 $deferred->reject(new BackendException('Response is not JSON; cannot parse'));
                 return;
             }
 
             $buffer = '';
-            $response->on('data', function ($chunk) use (&$buffer)
-            {
+            $response->on('data', static function ($chunk) use (&$buffer) {
                 $buffer .= $chunk;
             });
 
-            $response->on('end', function () use ($deferred, $url, &$buffer)
-            {
+            $response->on('end', static function () use ($deferred, $url, &$buffer) {
                 $result = json_decode($buffer);
                 if (!$result) {
                     $deferred->resolve(new BackendResult($url, '(could not get article information)'));
@@ -113,16 +109,13 @@ class Wikipedia implements BackendInterface
                 $results = [];
                 // Because MediaWiki returns results in this awkward way,
                 // we first process them into 'sane' results.
-                foreach ($result[1] as $key => $title)
-                {
+                foreach ($result[1] as $key => $title) {
                     $results[$key]['title'] = $title;
                 }
-                foreach ($result[2] as $key => $description)
-                {
+                foreach ($result[2] as $key => $description) {
                     $results[$key]['description'] = $description;
                 }
-                foreach ($result[3] as $key => $uri)
-                {
+                foreach ($result[3] as $key => $uri) {
                     $results[$key]['uri'] = $uri;
                 }
 
@@ -132,7 +125,12 @@ class Wikipedia implements BackendInterface
                 }
 
                 $result = array_shift($results);
-                $deferred->resolve(new BackendResult($result['uri'], (!empty($result['description']) ? $result['description'] : 'No description given.')));
+                $deferred->resolve(
+                    new BackendResult(
+                        $result['uri'],
+                        (!empty($result['description']) ? $result['description'] : 'No description given.')
+                    )
+                );
             });
         };
     }
