@@ -2,12 +2,6 @@
   "name": "wildphp/module-linksniffer",
   "description": "Shows information about a link when it is posted in a channel",
   "license": "MIT",
-  "authors": [
-    {
-      "name": "Yoshi2889",
-      "email": "rick.2889@gmail.com"
-    }
-  ],
   "autoload": {
     "psr-4": {
       "WildPHP\\Modules\\LinkSniffer\\": "src"
@@ -22,7 +16,8 @@
   "require-dev": {
     "roave/security-advisories": "dev-master",
     "phpunit/phpunit": "^8",
-    "wildphp/wild-irc-bot": "dev-master"
+    "wildphp/wild-irc-bot": "dev-master",
+    "squizlabs/php_codesniffer": "^3.0"
   },
   "config": {
     "platform": {
